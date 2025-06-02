@@ -73,6 +73,32 @@ app.post('/predict', async (req, res) => {
   }
 });
 
+// Endpoint GET para recibir imagen base64 por query param
+app.get("/predict", async (req, res) => {
+  try {
+    await loadModel();
+    const { imageBase64 } = req.query;
+    if (!imageBase64) {
+      return res.status(400).json({ error: "No imageBase64 provided" });
+    }
+
+    const buffer = Buffer.from(imageBase64, "base64");
+    const tensor = tf.node
+      .decodeImage(buffer)
+      .resizeNearestNeighbor([224, 224])
+      .toFloat()
+      .expandDims();
+
+    const prediction = model.predict(tensor);
+    const result = prediction.dataSync();
+
+    res.json({ result: Array.from(result) });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error processing image" });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
