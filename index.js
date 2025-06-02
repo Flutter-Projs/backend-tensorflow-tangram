@@ -7,7 +7,8 @@ const path = require("path");
    const cors = require('cors');
   //  app.use(cors({ origin: 'http://localhost:4200' }));
   //  app.use(cors({ origin: 'http://localhost:38247' }));
-   app.use(cors({ origin: 'http://localhost:39227' }));
+  //  app.use(cors({ origin: 'http://localhost:39227' }));
+  app.use(cors());
 
 app.use(bodyParser.json({ limit: "10mb" }));
 
