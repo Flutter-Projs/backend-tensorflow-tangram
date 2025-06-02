@@ -7,7 +7,7 @@ const path = require("path");
    const cors = require('cors');
   //  app.use(cors({ origin: 'http://localhost:4200' }));
   //  app.use(cors({ origin: 'http://localhost:38247' }));
-   app.use(cors({ origin: 'http://localhost:52009' }));
+   app.use(cors({ origin: 'http://localhost:39227' }));
 
 app.use(bodyParser.json({ limit: "10mb" }));
 
@@ -20,28 +20,28 @@ async function loadModel() {
   }
 }
 
-// Endpoint POST para recibir datos de entrada y devolver la predicción (tensor) 
-app.post('/predict', async (req, res) => {
-  try {
-    await loadModel();
-    const { inputData, shape } = req.body;
-    if (!inputData || !shape) {
-      return res.status(400).json({ error: 'No inputData or shape provided' });
-    }
+// // Endpoint POST para recibir datos de entrada y devolver la predicción (tensor) 
+// app.post('/predict', async (req, res) => {
+//   try {
+//     await loadModel();
+//     const { inputData, shape } = req.body;
+//     if (!inputData || !shape) {
+//       return res.status(400).json({ error: 'No inputData or shape provided' });
+//     }
 
-    // Reconstruye el tensor desde inputData y shape
-    const tensor = tf.tensor(inputData, shape);
+//     // Reconstruye el tensor desde inputData y shape
+//     const tensor = tf.tensor(inputData, shape);
 
-    // Realiza la predicción
-    const prediction = model.predict(tensor);
-    const result = prediction.dataSync();
+//     // Realiza la predicción
+//     const prediction = model.predict(tensor);
+//     const result = prediction.dataSync();
 
-    res.json({ result: Array.from(result) });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Error processing input tensor' });
-  }
-});
+//     res.json({ result: Array.from(result) });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ error: 'Error processing input tensor' });
+//   }
+// });
 
 // Endpoint POST para recibir imagen base64 en el cuerpo de la solicitud
 app.post('/predict', async (req, res) => {
