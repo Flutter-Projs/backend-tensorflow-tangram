@@ -74,6 +74,62 @@ app.post('/predict', async (req, res) => {
   }
 });
 
+
+// No deforme imágenes verticales ni horizontales.
+// Añada padding para hacerlas cuadradas antes de redimensionarlas.
+// Haga que la predicción sea más robusta, evitando errores o malos resultados.
+app.post('/predict2', async (req, res) => {
+  try {
+    await loadModel();
+    const { imageBase64 } = req.body;
+    if (!imageBase64) {
+      return res.status(400).json({ error: 'No imageBase64 provided' });
+    }
+
+    // Decodifica la imagen base64 a un tensor [H, W, C]
+    const buffer = Buffer.from(imageBase64, 'base64');
+    let imageTensor = tf.node.decodeImage(buffer); // RGB o RGBA
+
+    // Si la imagen tiene 4 canales (RGBA), recorta a RGB
+    if (imageTensor.shape[2] === 4) {
+      imageTensor = imageTensor.slice([0, 0, 0], [-1, -1, 3]);
+    }
+
+    // Asegura que la imagen sea cuadrada agregando padding
+    const [height, width] = imageTensor.shape;
+    const maxDim = Math.max(height, width);
+    const top = Math.floor((maxDim - height) / 2);
+    const bottom = maxDim - height - top;
+    const left = Math.floor((maxDim - width) / 2);
+    const right = maxDim - width - left;
+
+    let squaredImage = imageTensor.pad([[top, bottom], [left, right], [0, 0]]);
+
+    // Redimensiona a 224x224 y normaliza
+    let inputTensor = squaredImage
+      .resizeBilinear([224, 224])
+      .toFloat()
+      .div(255.0)
+      .expandDims(0);
+
+    // Realiza la predicción
+    const prediction = model.predict(inputTensor);
+    const result = await prediction.data(); // usa async para evitar bloqueo
+
+    // Libera memoria
+    imageTensor.dispose();
+    squaredImage.dispose();
+    inputTensor.dispose();
+    prediction.dispose();
+
+    res.json({ result: Array.from(result) });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error processing image' });
+  }
+});
+
+
 // Endpoint GET para recibir imagen base64 por query param
 app.get("/predict", async (req, res) => {
   try {
