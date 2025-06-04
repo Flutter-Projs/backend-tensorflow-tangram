@@ -74,6 +74,42 @@ app.post('/predictFormData', upload.single('file'), async (req, res) => {
   }
 });
 
+// Si quieres que sea idéntico al frontend (sin padding, solo resize):
+app.post('/predictFormDataSimple', upload.single('file'), async (req, res) => {
+  try {
+    await loadModel();
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    // Decodifica la imagen a tensor
+    let tensor = tf.node.decodeImage(req.file.buffer);
+
+    // Si tiene 4 canales (RGBA), recorta a RGB
+    if (tensor.shape[2] === 4) {
+      tensor = tensor.slice([0, 0, 0], [-1, -1, 3]);
+    }
+
+    // Redimensiona, normaliza y expande dimensión (sin padding)
+    tensor = tensor
+      .resizeBilinear([224, 224])
+      .toFloat()
+      .expandDims(0)
+      .div(255.0);
+
+    const prediction = model.predict(tensor);
+    const result = await prediction.data();
+
+    tensor.dispose();
+    prediction.dispose();
+
+    res.json({ result: Array.from(result) });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error processing file' });
+  }
+});
+
 // // Endpoint POST para recibir datos de entrada y devolver la predicción (tensor) 
 // app.post('/predict', async (req, res) => {
 //   try {
