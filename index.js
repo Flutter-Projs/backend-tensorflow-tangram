@@ -21,6 +21,59 @@ async function loadModel() {
   }
 }
 
+const multer = require('multer');
+const upload = multer();
+
+// Endpoint POST para recibir imagen como archivo (FormData)
+app.post('/predictFormData', upload.single('file'), async (req, res) => {
+  try {
+    await loadModel();
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    // Procesa el buffer de la imagen
+    let imageTensor = tf.node.decodeImage(req.file.buffer); // RGB o RGBA
+
+    // Si la imagen tiene 4 canales (RGBA), recorta a RGB
+    if (imageTensor.shape[2] === 4) {
+      imageTensor = imageTensor.slice([0, 0, 0], [-1, -1, 3]);
+    }
+
+    // Padding para cuadrar la imagen
+    const [height, width] = imageTensor.shape;
+    const maxDim = Math.max(height, width);
+    const top = Math.floor((maxDim - height) / 2);
+    const bottom = maxDim - height - top;
+    const left = Math.floor((maxDim - width) / 2);
+    const right = maxDim - width - left;
+
+    let squaredImage = imageTensor.pad([[top, bottom], [left, right], [0, 0]]);
+
+    // Redimensiona a 224x224 y normaliza
+    let inputTensor = squaredImage
+      .resizeBilinear([224, 224])
+      .toFloat()
+      .div(255.0)
+      .expandDims(0);
+
+    // Predicción
+    const prediction = model.predict(inputTensor);
+    const result = await prediction.data();
+
+    // Libera memoria
+    imageTensor.dispose();
+    squaredImage.dispose();
+    inputTensor.dispose();
+    prediction.dispose();
+
+    res.json({ result: Array.from(result) });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error processing file' });
+  }
+});
+
 // // Endpoint POST para recibir datos de entrada y devolver la predicción (tensor) 
 // app.post('/predict', async (req, res) => {
 //   try {
